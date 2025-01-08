@@ -33,7 +33,7 @@
     "titleBrokenLink": "Lien brisé",
     "subtitleBrokenLink": "Le lien doit correspondre parfaitement afin que le déchiffrement fonctionne, il pourrait manquer des caractères.",
     "titleExpired": "Expiré",
-    "subtitleExpired": "Aucun secret dure pour toujours. Tous les secrets stockés expirent et s'auto-détruisent automatiquement. Leur durée de vie varie d'une heure à une semaine."
+    "subtitleExpired": "Aucun secret ne dure pour toujours. Tous les secrets stockés expirent et s'auto-détruisent automatiquement. Leur durée de vie varie d'une heure à une semaine."
   },
   "result": {
     "title": "Secret stocké dans la base de données",
