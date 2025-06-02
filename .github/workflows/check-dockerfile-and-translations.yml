@@ -207,3 +207,4 @@ jobs:
         run: |
           echo "Docker build failed or translations are missing. Failing the check."
           exit 1
+      
