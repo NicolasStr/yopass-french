@@ -109,10 +109,8 @@ jobs:
             if (fromChanged) {
               body += "📦 **Base image update detected**\n\n";
               body += "This PR updates the base Docker image to: \`${imageName}:${imageTag}\`.\n\n";
-              body += "🔖 When this PR is merged, a new release will be created using this version.\n";
             } else if (buildStatus === 'success') {
               body += "📦 **Base image version was not changed.**\n";
-              body += "🔖 A new release will be created as: \`${imageTag}-X\`, where \`X\` is the next translation bump version.\n";
             }
 
             body += "\n🛠️ **Build status:** ";
