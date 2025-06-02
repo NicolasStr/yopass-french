@@ -37,13 +37,6 @@ jobs:
           IMAGE_TAG=$(echo "$BASE_IMAGE" | cut -s -d':' -f2)
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_tag=${IMAGE_TAG:-latest}" >> $GITHUB_OUTPUT
-      
-      - name: Set default image outputs
-        if: steps.check_diff.outputs.from_changed != 'true'
-        id: extract
-        run: |
-          echo "image_name=unchanged" >> $GITHUB_OUTPUT
-          echo "image_tag=unchanged" >> $GITHUB_OUTPUT
 
       - name: Build Docker image
         continue-on-error: true
