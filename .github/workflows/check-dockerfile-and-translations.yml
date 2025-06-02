@@ -152,6 +152,8 @@ jobs:
             });
 
             console.log(`Found ${reviews.data.length} reviews for PR #${pull_number}`);
+            console.log(reviews);
+            console.log(`Bot login: ${botLogin}`);
 
             const previousReview = reviews.data.find(
               review =>
