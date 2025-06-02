@@ -62,9 +62,27 @@ jobs:
         if: steps.build-status.outputs.status == 'success'
         id: compare-translations
         run: |
-          missing_keys=$(jq -r 'keys[]' en.json | while read -r key; do
-            jq -e --arg key "$key" 'has($key)' website/locales/fr.json > /dev/null || echo "$key"
-          done)
+          flatten_json() {
+            jq -r '
+              def walk_paths:
+                paths(scalars) as $p
+                | [$p | map(
+                    if type == "number" then
+                      "[" + tostring + "]"
+                    else
+                      tostring
+                    end
+                  ) | join(".")]
+                | @tsv;
+
+              walk_paths
+            ' "$1"
+          }
+
+          en_keys=$(flatten_json en.json)
+          fr_keys=$(flatten_json locales/fr.json)
+
+          missing_keys=$(comm -23 <(echo "$en_keys" | sort) <(echo "$fr_keys" | sort))
 
           if [ -z "$missing_keys" ]; then
             echo "all_translated=true" >> $GITHUB_OUTPUT
@@ -139,3 +157,39 @@ jobs:
               body: body,
               event: "REQUEST_CHANGES"
             });
+
+      - name: Dismiss previous review if translations are fixed
+        if: steps.build-status.outputs.status == 'success' && steps.compare-translations.outputs.all_translated == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const botLogin = context.actor;
+            const reviewToDismiss = reviews.data.find(
+              review =>
+                review.user.login === botLogin &&
+                review.state === 'CHANGES_REQUESTED'
+            );
+
+            if (reviewToDismiss) {
+              await github.rest.pulls.dismissReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                review_id: reviewToDismiss.id,
+                message: 'Translation keys are now complete. Review dismissed automatically.',
+              });
+
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                body: '✅ All translation keys are now present. Thank you!',
+                event: 'COMMENT',
+              });
+            }
