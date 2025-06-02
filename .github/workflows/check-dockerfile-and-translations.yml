@@ -201,6 +201,7 @@ jobs:
                 body
               });
             }
+
       - name: Fail check if something is wrong
         if: steps.build-status.outputs.status == 'failure' || steps.compare-translations.outputs.all_translated == 'false'
         run: |
