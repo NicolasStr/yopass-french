@@ -135,61 +135,69 @@ jobs:
               body
             });
 
-      - name: Submit review requesting changes if translations are incomplete
-        if: steps.build-status.outputs.status == 'success' && steps.compare-translations.outputs.all_translated == 'false'
+      - name: Handle translation review state
+        if: steps.build-status.outputs.status == 'success'
         uses: actions/github-script@v7
         with:
           script: |
+            const allTranslated = "${{ steps.compare-translations.outputs.all_translated }}" === "true";
             const missingKeys = `${{ steps.compare-translations.outputs.missing_keys }}`;
-            const imageName = "${{ steps.extract.outputs.image_name }}";
-            const imageTag = "${{ steps.extract.outputs.image_tag }}";
+            const pull_number = context.issue.number;
+            const botLogin = context.actor;
 
-            let body = '';
-            body += "🚫 **Translation keys missing**\n\n";
-            body += `The following keys from \`en.json\` are not present in \`fr.json\` for image \`${imageName}:${imageTag}\`:\n`;
-            body += "```\n" + missingKeys.trim() + "\n```\n";
-            body += "Please add the missing translations before merging.";
-
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              body: body,
-              event: "REQUEST_CHANGES"
-            });
-
-      - name: Dismiss previous review if translations are fixed
-        if: steps.build-status.outputs.status == 'success' && steps.compare-translations.outputs.all_translated == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
             const reviews = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number,
+              pull_number
             });
 
-            const botLogin = context.actor;
-            const reviewToDismiss = reviews.data.find(
+            const previousReview = reviews.data.find(
               review =>
                 review.user.login === botLogin &&
-                review.state === 'CHANGES_REQUESTED'
+                review.state === "CHANGES_REQUESTED"
             );
 
-            if (reviewToDismiss) {
-              await github.rest.pulls.dismissReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number,
-                review_id: reviewToDismiss.id,
-                message: 'Translation keys are now complete. Review dismissed automatically.',
-              });
+            if (allTranslated) {
+              if (previousReview) {
+                await github.rest.pulls.dismissReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number,
+                  review_id: previousReview.id,
+                  message: "✅ All translations are now present. Review dismissed automatically."
+                });
+
+                await github.rest.issues.createComment({
+                  issue_number: pull_number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: "✅ All translation keys are now complete. Review dismissed."
+                });
+              }
+            } else {
+              let body = "";
+              body += "🚫 **Translation keys missing**\n\n";
+              body += "The following keys from `en.json` are not present in `fr.json`:\n";
+              body += "```\n";
+              body += missingKeys.trim() + "\n";
+              body += "```\n";
+              body += "Please update the translations before merging.\n";
+
+              if (previousReview) {
+                await github.rest.pulls.dismissReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number,
+                  review_id: previousReview.id,
+                  message: "🔄 Translations are still missing — review updated."
+                });
+              }
 
               await github.rest.pulls.createReview({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: context.issue.number,
-                body: '✅ All translation keys are now present. Thank you!',
-                event: 'COMMENT',
+                pull_number,
+                event: "REQUEST_CHANGES",
+                body
               });
             }
