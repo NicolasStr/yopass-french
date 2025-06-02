@@ -47,7 +47,9 @@
     "titleFile": "Fichier téléchargé",
     "titleMessage": "Message déchiffré",
     "subtitleMessage": "Ce secret pourrait ne plus jamais être visible, assurez-vous de l'enregistrer maintenant !",
-    "buttonCopy": "Copier"
+    "buttonCopy": "Copier",
+    "showQrCode": "Afficher le code QR",
+    "hideQrCode": "Masquer le code QR"
   },
   "delete": {
     "buttonDelete": "Supprimer",
