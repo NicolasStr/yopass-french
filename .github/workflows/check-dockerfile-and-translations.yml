@@ -151,11 +151,15 @@ jobs:
               pull_number
             });
 
+            console.log(`Found ${reviews.data.length} reviews for PR #${pull_number}`);
+
             const previousReview = reviews.data.find(
               review =>
                 review.user.login === botLogin &&
                 review.state === "CHANGES_REQUESTED"
             );
+
+            console.log(`Previous review found: ${previousReview ? previousReview.id : "None"}`);
 
             if (allTranslated) {
               console.log("All translation keys are present in fr.json. Dismissing previous review if exists.");
