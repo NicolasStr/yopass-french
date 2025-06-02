@@ -104,8 +104,7 @@ jobs:
               if (allTranslated) {
                 body += "\n🌍 All translation keys from `en.json` are present in `fr.json`.";
               } else {
-                body += "\n⚠️ Some translation keys are missing in `fr.json`:\n";
-                body += "```\n" + missingKeys.trim() + "\n```";
+                body += "\n⚠️ Some translation keys are missing in `fr.json`. Change has been requested for missing keys.";
               }
             } else {
               body += "\n⚠️ Skipped translation check because the Docker build failed.";
