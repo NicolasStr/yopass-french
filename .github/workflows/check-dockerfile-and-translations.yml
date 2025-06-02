@@ -80,7 +80,7 @@ jobs:
           }
 
           en_keys=$(flatten_json en.json)
-          fr_keys=$(flatten_json locales/fr.json)
+          fr_keys=$(flatten_json website/public/locales/fr.json)
 
           missing_keys=$(comm -23 <(echo "$en_keys" | sort) <(echo "$fr_keys" | sort))
 
