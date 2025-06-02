@@ -198,11 +198,6 @@ jobs:
                 repo: context.repo.repo,
                 pull_number,
                 event: "REQUEST_CHANGES",
-                comments: [{
-                  path: "website/public/locales/fr.json",
-                  position: 1, // safest default: top of diff
-                  body: `⚠️ Missing translation keys:\n\`\`\`\n${missingKeys.trim()}\n\`\`\``
-                }],
                 body
               });
             }
