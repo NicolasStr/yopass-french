@@ -143,7 +143,6 @@ jobs:
             const allTranslated = "${{ steps.compare-translations.outputs.all_translated }}" === "true";
             const missingKeys = `${{ steps.compare-translations.outputs.missing_keys }}`;
             const pull_number = context.issue.number;
-            const botLogin = context.actor;
 
             const reviews = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
@@ -152,12 +151,11 @@ jobs:
             });
 
             console.log(`Found ${reviews.data.length} reviews for PR #${pull_number}`);
-            console.log(reviews);
-            console.log(`Bot login: ${botLogin}`);
 
             const previousReview = reviews.data.find(
               review =>
-                review.user.login === botLogin &&
+                review.user.type === "Bot" &&
+                review.user.login.includes("github-actions") &&
                 review.state === "CHANGES_REQUESTED"
             );
 
