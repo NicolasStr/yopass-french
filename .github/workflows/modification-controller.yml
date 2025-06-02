@@ -57,7 +57,7 @@ jobs:
         if: steps.build-status.outputs.status == 'success'
         run: |
           container_id=$(docker create yopass-french)
-          docker cp "$container_id":/app/locales/en.json ./en.json
+          docker cp "$container_id":/public/locales/en.json ./en.json
           docker rm "$container_id"
 
       - name: Compare en.json with fr.json
@@ -65,7 +65,7 @@ jobs:
         id: compare-translations
         run: |
           missing_keys=$(jq -r 'keys[]' en.json | while read -r key; do
-            jq -e --arg key "$key" 'has($key)' locales/fr.json > /dev/null || echo "$key"
+            jq -e --arg key "$key" 'has($key)' website/locales/fr.json > /dev/null || echo "$key"
           done)
 
           if [ -z "$missing_keys" ]; then
