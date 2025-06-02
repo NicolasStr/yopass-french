@@ -1,18 +1,18 @@
-name: Modification Controller
+name: Check Dockerfile and Translations
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
-  comment-base-image-update:
+  check:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Check if FROM line changed
         id: check_diff
@@ -20,15 +20,13 @@ jobs:
           BASE_BRANCH=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
           git fetch origin "$BASE_BRANCH"
           FROM_DIFF=$(git diff origin/"$BASE_BRANCH"...HEAD -- Dockerfile | grep '^[-+]' | grep -i '^[-+]FROM' || true)
-
           if [ -n "$FROM_DIFF" ]; then
             echo "from_changed=true" >> $GITHUB_OUTPUT
           else
             echo "from_changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Extract base image version from Dockerfile
-        if: steps.check_diff.outputs.from_changed == 'true'
+      - name: Extract base image version
         id: extract
         run: |
           BASE_IMAGE_LINE=$(grep -i '^FROM' Dockerfile | head -n 1)
@@ -38,11 +36,11 @@ jobs:
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_tag=${IMAGE_TAG:-latest}" >> $GITHUB_OUTPUT
 
-      - name: Build Docker image
-        continue-on-error: true
+      - name: Try to build Docker image
         id: build
+        continue-on-error: true
         run: |
-          docker build -t yopass-french .
+          docker build -t my-app-image .
 
       - name: Set build status output
         id: build-status
@@ -56,8 +54,8 @@ jobs:
       - name: Copy en.json from Docker image
         if: steps.build-status.outputs.status == 'success'
         run: |
-          container_id=$(docker create yopass-french)
-          docker cp "$container_id":/public/locales/en.json ./en.json
+          container_id=$(docker create my-app-image)
+          docker cp "$container_id":/app/locales/en.json ./en.json
           docker rm "$container_id"
 
       - name: Compare en.json with fr.json
@@ -65,7 +63,7 @@ jobs:
         id: compare-translations
         run: |
           missing_keys=$(jq -r 'keys[]' en.json | while read -r key; do
-            jq -e --arg key "$key" 'has($key)' website/locales/fr.json > /dev/null || echo "$key"
+            jq -e --arg key "$key" 'has($key)' locales/fr.json > /dev/null || echo "$key"
           done)
 
           if [ -z "$missing_keys" ]; then
@@ -77,7 +75,7 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
-      - name: Comment on PR with translation status
+      - name: Add summary comment to PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -86,29 +84,31 @@ jobs:
             const buildStatus = "${{ steps.build-status.outputs.status }}";
             const allTranslated = "${{ steps.compare-translations.outputs.all_translated }}" === 'true';
             const missingKeys = `${{ steps.compare-translations.outputs.missing_keys }}`;
+            const fromChanged = "${{ steps.check_diff.outputs.from_changed }}" === 'true';
 
             let body = '';
 
             if (fromChanged) {
-              body += `📦 **Base image update detected**\n\n`;
-              body += `This PR updates the base Docker image to: \`${imageName}:${imageTag}\`.\n\n`;
-              body += `✅ When this PR is merged, a new release will be created using this version.\n`;
-            }
-            if (!fromChanged && buildStatus === 'success') {
-              body += `📦 **Base image version was not changed.**\n\n`;
-              body += `✅ When this PR is merged, A new release will be created as: \`${imageTag}-X\`, where \`X\` is the next translation bump version.`;
+              body += "📦 **Base image update detected**\n\n";
+              body += "This PR updates the base Docker image to: \`${imageName}:${imageTag}\`.\n\n";
+              body += "🔖 When this PR is merged, a new release will be created using this version.\n";
+            } else if (buildStatus === 'success') {
+              body += "📦 **Base image version was not changed.**\n";
+              body += "🔖 A new release will be created as: \`${imageTag}-X\`, where \`X\` is the next translation bump version.\n";
             }
 
-            body += `\n🛠️ **Build status:** ${buildStatus === 'success' ? '✅ Success' : '❌ Failed'}`;
+            body += "\n🛠️ **Build status:** ";
+            body += buildStatus === 'success' ? "✅ Success" : "❌ Failed";
 
             if (buildStatus === 'success') {
               if (allTranslated) {
-                body += `\n🌍 All translation keys from \`en.json\` are present in \`fr.json\`.`;
+                body += "\n🌍 All translation keys from `en.json` are present in `fr.json`.";
               } else {
-                body += `\n⚠️ Some translation keys are missing in \`fr.json\`:\n\`\`\`\n${missingKeys.trim()}\n\`\`\``;
+                body += "\n⚠️ Some translation keys are missing in `fr.json`:\n";
+                body += "```\n" + missingKeys.trim() + "\n```";
               }
             } else {
-              body += `\n⚠️ Skipped translation check because the Docker build failed.`;
+              body += "\n⚠️ Skipped translation check because the Docker build failed.";
             }
 
             github.rest.issues.createComment({
@@ -127,12 +127,11 @@ jobs:
             const imageName = "${{ steps.extract.outputs.image_name }}";
             const imageTag = "${{ steps.extract.outputs.image_tag }}";
 
-            const body = `🚫 **Translation keys missing**`;
+            let body = '';
+            body += "🚫 **Translation keys missing**\n\n";
             body += `The following keys from \`en.json\` are not present in \`fr.json\` for image \`${imageName}:${imageTag}\`:\n`;
-            body += \`\`\`;
-            body += ${missingKeys.trim()};
-            body += \`\`\`
-            body += `\n\nPlease add the missing translations before merging.`;
+            body += "```\n" + missingKeys.trim() + "\n```\n";
+            body += "Please add the missing translations before merging.";
 
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
