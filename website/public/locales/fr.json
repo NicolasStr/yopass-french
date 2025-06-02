@@ -48,7 +48,7 @@
     "titleMessage": "Message déchiffré",
     "subtitleMessage": "Ce secret pourrait ne plus jamais être visible, assurez-vous de l'enregistrer maintenant !",
     "buttonCopy": "Copier",
-    "hideQrCode": "WIP"
+    "hideQrCode": "WIP",
     "showQrCode": "WIP"
   },
   "delete": {
