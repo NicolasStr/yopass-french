@@ -1,47 +1,80 @@
+[🇫🇷 Lire ce README en français](./README.fr.md)
 
-# yopass - French language file
+# yopass-french
 
-***Credits to [Anturix](https://github.com/Anturix) for example about translating Yopass***
-
----
-## English
-French language File for yopass by Johan Haals (jhaals/yopass)
-[Yopass - Share Secrets Securely](https://github.com/jhaals/yopass)
-
-### Installation
-
-Copy the `website/public/locales/fr.json` file to the corresponding directory in your yopass installation.
-
-yopass will automatically detect the new language and activate it if your Browser presents that language to yopass.
-
-### Container
-
-Check this repository out and build your own container with the French language file included to the original Yopass-Image from docker.io.
-
-```
-git clone https://github.com/NicolasStr/yopass-french.git
-cd yopass-french
-docker build -t anturix/yopassfr -f Dockerfile
-```
+> 🇫🇷 French-translated Docker image for [Yopass](https://github.com/jhaals/yopass) – Secure, ephemeral sharing of secrets.
 
 ---
-## Français
 
-Traduction française pour Yopass par Johan Haals (Jhaals / Yopass)
-[Yopass - Share Secrets Securely](https://github.com/jhaals/yopass)
+## About
 
-### Installation
+**yopass-french** is a community-maintained Docker image of [Yopass](https://github.com/jhaals/yopass) with a French language translation.  
+Yopass is a tool for sharing secrets (like passwords or sensitive information) quickly and securely. Its main goal is to reduce the number of passwords circulating in emails, ticketing systems, and chat messages.
 
-Copiez le fichier site `website/public/locales/fr.json` dans le répertoire correspondant dans votre installation Yopass.
+- Secrets are encrypted/decrypted locally in your browser.
+- The decryption key is never sent to the server and is only shown once.
+- Yopass returns a one-time URL with a configurable expiry date.
 
-Yopass détectera automatiquement la nouvelle langue et l'activera si votre navigateur présente cette langue à Yopass.
+> For full details, features, and security information, please refer to the [original Yopass README](https://github.com/jhaals/yopass#readme).
 
-### Container
+---
 
-Clonez ce repository et créez votre propre conteneur avec le fichier de langue française inclus dans l'image d'origine Yopass.
+## Usage
 
-```
+This image works exactly like the original, but with French language support.
+
+- To use the French version, simply replace `jhaals/yopass` with `nicolasstr/yopass-french` in your Docker commands.
+
+---
+
+## Docker Images
+
+Images are automatically built and pushed to [GitHub Packages](https://github.com/NicolasStr/yopass-french/pkgs/container/yopass-french) and will be available for use.
+
+---
+
+## Installation & Configuration
+
+For installation and configuration instructions, please see the [original Yopass documentation](https://github.com/jhaals/yopass?tab=readme-ov-file#installation--configuration).
+
+---
+
+## Versioning
+
+- This project tracks the same version as the original Yopass.
+- If translation updates are made without an upstream Yopass update, a bump is added:  
+  e.g., `1.1.1-2`, `1.1.1-3`, etc.
+
+---
+
+## Building the Image
+
+Clone this repository and build the Docker image:
+
+```sh
 git clone https://github.com/NicolasStr/yopass-french.git
 cd yopass-french
-docker build -t anturix/yopassfr -f Dockerfile
+docker build -t nicolasstr/yopass-french .
 ```
+
+---
+
+## Contributing
+
+All PRs are welcome! If you have improvements, fixes, or updated translations, feel free to open a pull request.
+
+---
+
+## Credits
+
+- Original project: [Yopass by Johan Haals](https://github.com/jhaals/yopass)
+- French translation: [NicolasStr](https://github.com/NicolasStr)  
+  (with thanks to [Anturix](https://github.com/Anturix) for translation guidance)
+
+---
+
+## More Information
+
+- For advanced configuration, deployment, and security notes, see the [original Yopass documentation](https://github.com/jhaals/yopass#readme).
+
+---
