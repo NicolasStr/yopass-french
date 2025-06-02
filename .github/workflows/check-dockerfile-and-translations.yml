@@ -159,6 +159,9 @@ jobs:
 
             if (allTranslated) {
               if (previousReview) {
+                console.log("Dismissing previous review as all translations are now present.");
+                console.log(`Review ID: ${previousReview.id}`);
+                console.log(`${previousReview.body}`);
                 await github.rest.pulls.dismissReview({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
