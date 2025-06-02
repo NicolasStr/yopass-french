@@ -158,6 +158,7 @@ jobs:
             );
 
             if (allTranslated) {
+              console.log("All translation keys are present in fr.json. Dismissing previous review if exists.");
               if (previousReview) {
                 console.log("Dismissing previous review as all translations are now present.");
                 console.log(`Review ID: ${previousReview.id}`);
