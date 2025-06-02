@@ -1,0 +1,217 @@
+name: Check Dockerfile and Translations
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check if FROM line changed
+        id: check_diff
+        run: |
+          BASE_BRANCH=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
+          git fetch origin "$BASE_BRANCH"
+          FROM_DIFF=$(git diff origin/"$BASE_BRANCH"...HEAD -- Dockerfile | grep '^[-+]' | grep -i '^[-+]FROM' || true)
+          if [ -n "$FROM_DIFF" ]; then
+            echo "from_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "from_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract base image version
+        id: extract
+        run: |
+          BASE_IMAGE_LINE=$(grep -i '^FROM' Dockerfile | head -n 1)
+          BASE_IMAGE=$(echo "$BASE_IMAGE_LINE" | awk '{print $2}')
+          IMAGE_NAME=$(echo "$BASE_IMAGE" | cut -d':' -f1)
+          IMAGE_TAG=$(echo "$BASE_IMAGE" | cut -s -d':' -f2)
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG:-latest}" >> $GITHUB_OUTPUT
+
+      - name: Try to build Docker image
+        id: build
+        continue-on-error: true
+        run: |
+          docker build -t my-app-image .
+
+      - name: Set build status output
+        id: build-status
+        run: |
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Copy en.json from Docker image
+        if: steps.build-status.outputs.status == 'success'
+        run: |
+          container_id=$(docker create my-app-image)
+          docker cp "$container_id":/public/locales/en.json ./en.json
+          docker rm "$container_id"
+
+      - name: Compare en.json with fr.json
+        if: steps.build-status.outputs.status == 'success'
+        id: compare-translations
+        run: |
+          flatten_json() {
+            jq -r '
+              def walk_paths:
+                paths(scalars) as $p
+                | [$p | map(
+                    if type == "number" then
+                      "[" + tostring + "]"
+                    else
+                      tostring
+                    end
+                  ) | join(".")]
+                | @tsv;
+
+              walk_paths
+            ' "$1"
+          }
+
+          en_keys=$(flatten_json en.json)
+          fr_keys=$(flatten_json website/public/locales/fr.json)
+
+          missing_keys=$(comm -23 <(echo "$en_keys" | sort) <(echo "$fr_keys" | sort))
+
+          if [ -z "$missing_keys" ]; then
+            echo "all_translated=true" >> $GITHUB_OUTPUT
+          else
+            echo "all_translated=false" >> $GITHUB_OUTPUT
+            echo "missing_keys<<EOF" >> $GITHUB_OUTPUT
+            echo "$missing_keys" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add summary comment to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const imageName = "${{ steps.extract.outputs.image_name }}";
+            const imageTag = "${{ steps.extract.outputs.image_tag }}";
+            const buildStatus = "${{ steps.build-status.outputs.status }}";
+            const allTranslated = "${{ steps.compare-translations.outputs.all_translated }}" === 'true';
+            const missingKeys = `${{ steps.compare-translations.outputs.missing_keys }}`;
+            const fromChanged = "${{ steps.check_diff.outputs.from_changed }}" === 'true';
+
+            let body = '';
+
+            if (fromChanged) {
+              body += "📦 **Base image update detected**\n\n";
+              body += "This PR updates the base Docker image to: \`${imageName}:${imageTag}\`.\n\n";
+              body += "🔖 When this PR is merged, a new release will be created using this version.\n";
+            } else if (buildStatus === 'success') {
+              body += "📦 **Base image version was not changed.**\n";
+              body += "🔖 A new release will be created as: \`${imageTag}-X\`, where \`X\` is the next translation bump version.\n";
+            }
+
+            body += "\n🛠️ **Build status:** ";
+            body += buildStatus === 'success' ? "✅ Success" : "❌ Failed";
+
+            if (buildStatus === 'success') {
+              if (allTranslated) {
+                body += "\n🌍 All translation keys from `en.json` are present in `fr.json`.";
+              } else {
+                body += "\n⚠️ Some translation keys are missing in `fr.json`. Change has been requested for missing keys.";
+              }
+            } else {
+              body += "\n⚠️ Skipped translation check because the Docker build failed.";
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Handle translation review state
+        if: steps.build-status.outputs.status == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const allTranslated = "${{ steps.compare-translations.outputs.all_translated }}" === "true";
+            const missingKeys = `${{ steps.compare-translations.outputs.missing_keys }}`;
+            const pull_number = context.issue.number;
+
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number
+            });
+
+            console.log(`Found ${reviews.data.length} reviews for PR #${pull_number}`);
+
+            const previousReview = reviews.data.find(
+              review =>
+                review.user.type === "Bot" &&
+                review.user.login.includes("github-actions") &&
+                review.state === "CHANGES_REQUESTED"
+            );
+
+            console.log(`Previous review found: ${previousReview ? previousReview.id : "None"}`);
+
+            if (allTranslated) {
+              console.log("All translation keys are present in fr.json. Dismissing previous review if exists.");
+              if (previousReview) {
+                console.log("Dismissing previous review as all translations are now present.");
+                console.log(`Review ID: ${previousReview.id}`);
+                console.log(`${previousReview.body}`);
+                await github.rest.pulls.dismissReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number,
+                  review_id: previousReview.id,
+                  message: "✅ All translations are now present. Review dismissed automatically."
+                });
+
+                await github.rest.issues.createComment({
+                  issue_number: pull_number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: "✅ All translation keys are now complete. Review dismissed."
+                });
+              }
+            } else {
+              let body = "";
+              body += "🚫 **Translation keys missing**\n\n";
+              body += "The following keys from `en.json` are not present in `fr.json`:\n";
+              body += "```\n";
+              body += missingKeys.trim() + "\n";
+              body += "```\n";
+              body += "Please update the translations before merging.\n";
+
+              if (previousReview) {
+                await github.rest.pulls.dismissReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number,
+                  review_id: previousReview.id,
+                  message: "🔄 Translations are still missing — review updated."
+                });
+              }
+
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number,
+                event: "REQUEST_CHANGES",
+                body
+              });
+            }
+
+      - name: Fail check if something is wrong
+        if: steps.build-status.outputs.status == 'failure' || steps.compare-translations.outputs.all_translated == 'false'
+        run: |
+          echo "Docker build failed or translations are missing. Failing the check."
+          exit 1
