@@ -1,3 +1,18 @@
+> [!WARNING]
+> ## 🗄️ This project is archived
+>
+> The French translation is now **integrated directly into upstream Yopass**.
+> There is no longer any reason to use this fork.
+>
+> 👉 **Please use [jhaals/yopass](https://github.com/jhaals/yopass) instead.**
+> French is available out of the box via the built-in language switcher — no
+> custom image required.
+>
+> This repository is kept read-only for historical reference and will not
+> receive further updates.
+
+---
+
 [🇫🇷 Lire ce README en français](./README.fr.md)
 
 # yopass-french
