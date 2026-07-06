@@ -1,3 +1,18 @@
+> [!WARNING]
+> ## 🗄️ Ce projet est archivé
+>
+> La traduction française est désormais **intégrée directement dans Yopass**.
+> Il n'y a plus aucune raison d'utiliser ce fork.
+>
+> 👉 **Utilisez plutôt [jhaals/yopass](https://github.com/jhaals/yopass).**
+> Le français est disponible nativement via le sélecteur de langue intégré —
+> aucune image personnalisée n'est nécessaire.
+>
+> Ce dépôt est conservé en lecture seule à titre de référence historique et
+> ne recevra plus de mises à jour.
+
+---
+
 # yopass-french (français)
 
 > 🇫🇷 Image Docker traduite en français de [Yopass](https://github.com/jhaals/yopass) – Partage sécurisé et éphémère de secrets.
